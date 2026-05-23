@@ -1,0 +1,12 @@
+[project]
+name = "ai-biznes-p2"
+version = "0.1.0"
+description = "Generator atrakcyjnych opisów produktów (Streamlit + Ollama)"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "beautifulsoup4>=4.12.3",
+    "httpx>=0.28.1",
+    "lxml>=6.0.2",
+    "streamlit>=1.55.0",
+]
