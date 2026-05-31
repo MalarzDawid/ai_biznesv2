@@ -113,40 +113,217 @@ def main() -> None:
         layout="wide"
     )
 
-    # Styling for premium visual appearance
+    # Styling for premium Google-like visual appearance
     st.markdown(
         """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
         
+        /* Hide Streamlit headers and footers to look like custom app */
+        header {visibility: hidden !important; height: 0px !important;}
+        footer {visibility: hidden !important; height: 0px !important;}
+        #MainMenu {visibility: hidden !important;}
+
+        /* CSS Variables for Auto Light/Dark Themes */
+        :root {
+            --google-blue: #1a73e8;
+            --google-blue-hover: #1557b0;
+            --google-blue-light: #e8f0fe;
+            --bg-page: #f8f9fa;
+            --bg-card: #ffffff;
+            --border-color: #dadce0;
+            --text-primary: #202124;
+            --text-secondary: #5f6368;
+            --input-bg: #ffffff;
+            --card-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 2px 6px 2px rgba(60,64,67,0.15);
+            --subtle-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --google-blue: #8ab4f8;
+                --google-blue-hover: #aecbfa;
+                --google-blue-light: rgba(138, 180, 248, 0.15);
+                --bg-page: #121212;
+                --bg-card: #1e1e1e;
+                --border-color: #3c4043;
+                --text-primary: #e8eaed;
+                --text-secondary: #9aa0a6;
+                --input-bg: #202124;
+                --card-shadow: 0 1px 3px 0 rgba(0,0,0,0.5), 0 4px 8px 3px rgba(0,0,0,0.3);
+                --subtle-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            }
+        }
+
+        /* Base Body and Layout adjustments */
         html, body, [class*="css"], .stMarkdown {
-            font-family: 'Outfit', sans-serif !important;
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
         }
-        
-        .premium-title {
-            background: linear-gradient(135deg, #FF4B4B 0%, #7D12FF 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+
+        .block-container {
+            padding-top: 1.5rem !important;
+            padding-bottom: 2rem !important;
+            max-width: 1280px !important;
+        }
+
+        /* Custom Google-like Top Navigation Banner */
+        .google-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 28px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            margin-bottom: 28px;
+            box-shadow: var(--subtle-shadow);
+        }
+        .google-nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .brand-accent {
+            font-size: 1.4rem;
+            color: var(--google-blue);
+            font-weight: bold;
+            display: inline-block;
+            animation: rotate 6s linear infinite;
+        }
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+        .product-name {
             font-weight: 700;
-            font-size: 2.8rem;
-            margin-bottom: 5px;
-            padding-bottom: 10px;
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            letter-spacing: -0.4px;
         }
-        
-        .stButton>button {
-            background: linear-gradient(135deg, #FF4B4B 0%, #7D12FF 100%);
-            color: white;
-            border: none;
-            padding: 0.6rem 2rem;
+        .google-nav-badge {
+            background-color: var(--google-blue-light);
+            color: var(--google-blue);
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 0.85rem;
             font-weight: 600;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            width: 100%;
+            letter-spacing: 0.3px;
+            border: 1px solid rgba(26, 115, 232, 0.15);
         }
-        
-        .stButton>button:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
+
+        /* Inputs & Elements Styling */
+        div[data-testid="stTextInput"] input, 
+        div[data-testid="stTextArea"] textarea,
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+            background-color: var(--input-bg) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 12px !important;
+            padding: 10px 14px !important;
+            font-size: 0.95rem !important;
+            transition: all 0.25s ease !important;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.02) !important;
+        }
+
+        div[data-testid="stTextInput"] input:focus, 
+        div[data-testid="stTextArea"] textarea:focus,
+        div[data-testid="stSelectbox"] div[data-baseweb="select"]:focus {
+            border-color: var(--google-blue) !important;
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15) !important;
+        }
+
+        /* Form Expander overrides */
+        div[data-testid="stExpander"] {
+            background-color: var(--bg-card) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 16px !important;
+            box-shadow: var(--subtle-shadow) !important;
+            margin-bottom: 20px !important;
+            overflow: hidden !important;
+            transition: box-shadow 0.25s ease !important;
+        }
+        div[data-testid="stExpander"]:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06) !important;
+        }
+        div[data-testid="stExpander"] summary {
+            font-weight: 600 !important;
+            color: var(--text-primary) !important;
+            padding: 16px 20px !important;
+            font-size: 1.05rem !important;
+        }
+
+        /* Widget labels styling */
+        div[data-testid="stWidgetLabel"] p {
+            font-weight: 600 !important;
+            font-size: 0.95rem !important;
+            color: var(--text-primary) !important;
+            margin-bottom: 6px !important;
+        }
+
+        /* Premium Buttons Styling */
+        div.stButton > button {
+            background: var(--google-blue) !important;
+            color: var(--bg-card) !important;
+            border: 1px solid transparent !important;
+            border-radius: 28px !important;
+            padding: 12px 28px !important;
+            font-size: 0.95rem !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.15px !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            width: 100% !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06) !important;
+        }
+
+        div.stButton > button:hover {
+            background: var(--google-blue-hover) !important;
+            box-shadow: var(--card-shadow) !important;
+            transform: translateY(-1px) !important;
+        }
+
+        div.stButton > button:active {
+            transform: translateY(1px) !important;
+        }
+
+        /* Tabs UI overrides */
+        div[role="tablist"] {
+            border-bottom: 1px solid var(--border-color) !important;
+            margin-bottom: 24px !important;
+            gap: 8px !important;
+        }
+        button[role="tab"] {
+            font-weight: 600 !important;
+            font-size: 0.95rem !important;
+            color: var(--text-secondary) !important;
+            border: none !important;
+            background: transparent !important;
+            padding: 10px 20px !important;
+            border-radius: 20px 20px 0 0 !important;
+            transition: all 0.2s ease !important;
+        }
+        button[role="tab"]:hover {
+            color: var(--google-blue) !important;
+            background-color: var(--google-blue-light) !important;
+        }
+        button[role="tab"][aria-selected="true"] {
+            color: var(--google-blue) !important;
+            border-bottom: 3px solid var(--google-blue) !important;
+        }
+
+        /* Download buttons and secondary button details */
+        .stDownloadButton > button {
+            background-color: transparent !important;
+            color: var(--google-blue) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 24px !important;
+            padding: 10px 24px !important;
+            font-weight: 600 !important;
+            font-size: 0.9rem !important;
+            transition: all 0.2s ease !important;
+            box-shadow: none !important;
+        }
+        .stDownloadButton > button:hover {
+            background-color: var(--google-blue-light) !important;
+            border-color: var(--google-blue) !important;
         }
         </style>
         """,
@@ -159,9 +336,19 @@ def main() -> None:
 
     init_session_state()
 
-    st.markdown('<h1 class="premium-title">🛍️ Amazon Sales Description Optimizer</h1>', unsafe_allow_html=True)
-    st.caption("Proste i skuteczne narzędzie do optymalizacji opisów produktów z serwisu Amazon przy użyciu lokalnych modeli AI.")
-    st.markdown("---")
+    # Render beautiful Google-style Top Navigation Banner
+    st.markdown(
+        """
+        <div class="google-nav">
+            <div class="google-nav-brand">
+                <span class="brand-accent">✦</span>
+                <span class="product-name">RetailOptima AI &nbsp;<span style="font-weight: 300; font-size: 0.95rem; opacity: 0.6;">| &nbsp; PDP Optimizer</span></span>
+            </div>
+            <div class="google-nav-badge">Enterprise Suite</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     # Dual Input layout: URL Input and Model Dropdown
     col_input1, col_input2 = st.columns([3, 1])
@@ -553,46 +740,54 @@ FORMAT REZULTATU (Zastosuj dokładnie te znaczniki/tagi, nie pisz żadnych dodat
                                     anim_placeholder = st.empty()
                                     animation_html = """
                                     <style>
-                                    @keyframes pulse-glow {
-                                      0% { transform: scale(0.98); opacity: 0.7; box-shadow: 0 0 15px rgba(125, 18, 255, 0.2); }
-                                      50% { transform: scale(1.0); opacity: 1; box-shadow: 0 0 30px rgba(255, 75, 75, 0.4); }
-                                      100% { transform: scale(0.98); opacity: 0.7; box-shadow: 0 0 15px rgba(125, 18, 255, 0.2); }
+                                    @keyframes gemini-gradient {
+                                      0% { background-position: 0% 50%; }
+                                      50% { background-position: 100% 50%; }
+                                      100% { background-position: 0% 50%; }
                                     }
-                                    @keyframes spin {
-                                      0% { transform: rotate(0deg); }
-                                      100% { transform: rotate(360deg); }
-                                    }
-                                    .loading-card {
+                                    .gemini-loader-card {
                                       width: 100%;
-                                      height: 400px;
-                                      background: linear-gradient(135deg, rgba(255, 75, 75, 0.05) 0%, rgba(125, 18, 255, 0.05) 100%);
-                                      border: 2px solid rgba(125, 18, 255, 0.2);
+                                      height: 380px;
+                                      background: linear-gradient(-45deg, #4285F4, #9B51E0, #E94235, #F2994A);
+                                      background-size: 400% 400%;
+                                      animation: gemini-gradient 10s ease infinite;
                                       border-radius: 16px;
                                       display: flex;
                                       flex-direction: column;
                                       align-items: center;
                                       justify-content: center;
-                                      animation: pulse-glow 2s infinite ease-in-out;
-                                      color: #333;
-                                      font-size: 1.2rem;
+                                      color: white;
+                                      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+                                      text-align: center;
+                                      padding: 24px;
+                                    }
+                                    .gemini-sparkle {
+                                      font-size: 3.5rem;
+                                      margin-bottom: 16px;
+                                      animation: float 3s ease-in-out infinite;
+                                    }
+                                    @keyframes float {
+                                      0% { transform: translateY(0px) rotate(0deg); }
+                                      50% { transform: translateY(-10px) rotate(5deg); }
+                                      100% { transform: translateY(0px) rotate(0deg); }
+                                    }
+                                    .gemini-text {
+                                      font-size: 1.3rem;
                                       font-weight: 600;
-                                      margin-bottom: 20px;
+                                      letter-spacing: 0.5px;
+                                      margin-bottom: 8px;
+                                      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
                                     }
-                                    @media (prefers-color-scheme: dark) {
-                                      .loading-card {
-                                        color: #fff;
-                                        background: linear-gradient(135deg, rgba(255, 75, 75, 0.1) 0%, rgba(125, 18, 255, 0.1) 100%);
-                                      }
-                                    }
-                                    .loading-icon {
-                                      font-size: 3rem;
-                                      margin-bottom: 15px;
-                                      animation: spin 3s infinite linear;
+                                    .gemini-subtext {
+                                      font-size: 0.95rem;
+                                      opacity: 0.85;
+                                      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
                                     }
                                     </style>
-                                    <div class="loading-card">
-                                      <div class="loading-icon">🎨</div>
-                                      <div>Trwa generowanie ulepszonej grafiki przez FLUX AI...</div>
+                                    <div class="gemini-loader-card">
+                                      <div class="gemini-sparkle">✦</div>
+                                      <div class="gemini-text">RetailOptima AI Engine</div>
+                                      <div class="gemini-subtext">Trwa generowanie ulepszonej grafiki reklamowej przez model FLUX...</div>
                                     </div>
                                     """
                                     anim_placeholder.markdown(animation_html, unsafe_allow_html=True)
