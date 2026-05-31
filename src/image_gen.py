@@ -11,6 +11,12 @@ _pipeline_cache = {}
 def clear_gpu_cache() -> None:
     """Clears the pipeline cache and empties PyTorch's CUDA cache to free up VRAM."""
     global _pipeline_cache
+    for pipe in list(_pipeline_cache.values()):
+        try:
+            # Force move pipeline to CPU to release VRAM immediately
+            pipe.to("cpu")
+        except Exception:
+            pass
     _pipeline_cache.clear()
     gc.collect()
     if torch.cuda.is_available():
