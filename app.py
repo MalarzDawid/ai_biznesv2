@@ -44,7 +44,7 @@ def init_session_state() -> None:
     if "selected_concept" not in st.session_state:
         st.session_state.selected_concept = 0
     if "selected_tone" not in st.session_state:
-        st.session_state.selected_tone = "Perswazyjny (Sprzedażowy)"
+        st.session_state.selected_tone = "🤖 Wykryj automatycznie"
     if "seo_keywords" not in st.session_state:
         st.session_state.seo_keywords = ""
 
@@ -527,6 +527,7 @@ def main() -> None:
 
     # Słownik stylów copywritingu dla modelu językowego
     tone_options = {
+        "🤖 Wykryj automatycznie": "Model AI przeanalizuje tytuł, opis i recenzje produktu i automatycznie dobierze najlepszy styl copywritingu (np. luźny dla napojów, profesjonalny dla zegarków premium).",
         "Perswazyjny (Sprzedażowy)": "Skupia się na wywoływaniu emocji zakupowych, podkreślaniu korzyści (język korzyści) i silnym wezwaniu do działania (CTA).",
         "Profesjonalny (Ekspercki)": "Styl poważny, merytoryczny, budujący autorytet i zaufanie do marki. Idealny dla produktów premium, biznesowych (B2B) i droższej elektroniki.",
         "Techniczny (Specyfikacyjny)": "Koncentruje się na szczegółach technicznych, parametrach, faktach i precyzyjnym opisie konstrukcji lub działania produktu.",
@@ -538,16 +539,16 @@ def main() -> None:
         col_pers1, col_pers2 = st.columns(2)
         with col_pers1:
             tone_keys = list(tone_options.keys())
-            try:
-                tone_index = tone_keys.index(st.session_state.selected_tone)
-            except ValueError:
-                tone_index = 0
-                
+            current_tone = st.session_state.selected_tone
+            if current_tone not in tone_keys:
+                current_tone = "🤖 Wykryj automatycznie"
+            tone_index = tone_keys.index(current_tone)
+
             selected_tone_val = st.selectbox(
                 "Styl i ton wypowiedzi (Tone of Voice)",
                 options=tone_keys,
                 index=tone_index,
-                help="Wybierz styl, w jakim sztuczna inteligencja ma napisać nowy opis produktu."
+                help="Wybierz styl ręcznie lub zostaw 'Wykryj automatycznie', aby AI dobrało go na podstawie analizy produktu."
             )
             st.session_state.selected_tone = selected_tone_val
             st.caption(f"ℹ️ **O wybranym stylu:** {tone_options[st.session_state.selected_tone]}")
@@ -620,19 +621,21 @@ def main() -> None:
                 st.session_state.image_urls = image_urls
                 
                 status.write(f"✓ Pomyślnie pobrano: **{title}**")
-                
-                # Detect style and SEO keywords automatically based on product context
-                status.write("Analizowanie kontekstu produktu i dobieranie stylu copywritingu...")
-                detected_tone, suggested_keywords = detect_context_and_tone(title, desc)
-                st.session_state.selected_tone = detected_tone
-                
-                status.write(f"✓ Automatycznie dopasowano styl: **{detected_tone}**")
-                if suggested_keywords:
-                    status.write(f"✓ Wygenerowano sugerowane słowa kluczowe SEO: *{suggested_keywords}*")
-                
-                # Only populate SEO keywords if currently empty
-                if not st.session_state.seo_keywords.strip():
-                    st.session_state.seo_keywords = suggested_keywords
+
+                # Auto-detect tone only if user left selector at "Wykryj automatycznie"
+                if st.session_state.selected_tone == "🤖 Wykryj automatycznie":
+                    status.write("Analizowanie kontekstu produktu i dobieranie stylu copywritingu...")
+                    detected_tone, suggested_keywords = detect_context_and_tone(title, desc)
+                    actual_tone = detected_tone
+                    status.write(f"✓ Automatycznie dopasowano styl: **{detected_tone}**")
+                    if suggested_keywords:
+                        status.write(f"✓ Wygenerowano sugerowane słowa kluczowe SEO: *{suggested_keywords}*")
+                    if not st.session_state.seo_keywords.strip():
+                        st.session_state.seo_keywords = suggested_keywords
+                else:
+                    actual_tone = st.session_state.selected_tone
+                    status.write(f"✓ Używam wybranego stylu: **{actual_tone}**")
+                    suggested_keywords = ""
 
             except Exception as e:
                 status.update(label="❌ Błąd pobierania danych", state="error")
@@ -647,13 +650,18 @@ def main() -> None:
             # STEP 2: Optimize using selected model via Ollama
             status.write(f"Generowanie zoptymalizowanego opisu za pomocą {st.session_state.selected_model}...")
             status.update(label="🤖 Trwa optymalizacja opisu przez model AI...", state="running")
-            
+
             # Format reviews: positive (4-5★) first for social proof, then negative (1-3★) for objection handling
             formatted_reviews = ""
             if st.session_state.reviews:
                 all_reviews = st.session_state.reviews[:10]
-                positive = [r for r in all_reviews if (int(r.get('rating')) or 0) >= 4]
-                negative = [r for r in all_reviews if (int(r.get('rating')) or 0) < 4]
+                def _rating(r: dict) -> float:
+                    try:
+                        return float(r.get('rating') or 0)
+                    except (TypeError, ValueError):
+                        return 0.0
+                positive = [r for r in all_reviews if _rating(r) >= 4]
+                negative = [r for r in all_reviews if _rating(r) < 4]
                 review_lines = []
                 if positive:
                     review_lines.append("POSITIVE REVIEWS (4-5★) — extract emotional triggers, specific benefits, exact phrases customers love:")
@@ -669,7 +677,7 @@ def main() -> None:
                 "Techniczny (Specyfikacyjny)": "Technical/Specification — fact-first, highlight exact specs and construction details, use numbered lists for key parameters, write for buyers who research before deciding.",
                 "Luźny (Młodzieżowy)": "Casual/Youth — second-person 'Ty', conversational energy, use relatable scenarios from lifestyle reviews, end with a fun and direct CTA.",
             }
-            tone_instr = f"{tone_en.get(st.session_state.selected_tone, '')}"
+            tone_instr = f"{tone_en.get(actual_tone, tone_en['Perswazyjny (Sprzedażowy)'])}"
             seo_instr = "No specific SEO keywords provided — write naturally for the reader, not for robots."
             if st.session_state.seo_keywords.strip():
                 seo_instr = f"Integrate these SEO keywords naturally into the Polish description (inflect grammatically, never force): {st.session_state.seo_keywords.strip()}. Each keyword must appear at least once. Weave them into benefit statements and headlines — they should feel organic, not stuffed."
