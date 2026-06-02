@@ -1,0 +1,70 @@
+Jesteś wybitnym ekspertem e-commerce, specjalistą od optymalizacji współczynnika konwersji (CRO) oraz profesjonalnym copywriterem. Twoim zadaniem jest stworzenie niezwykle atrakcyjnego, przekonującego i nowoczesnego opisu produktu w języku polskim, który wywoła u klienta silne pożądanie zakupu oraz odpowie na wszelkie jego pytania i obawy.
+
+DANE WEJŚCIOWE PRODUKTU:
+Tytuł produktu: PELLINI Espresso Bar No. 82 Vivace - Kawa ziarnista 1kg
+
+Oryginalny opis/specyfikacja:
+Kawa ziarnista Pellini Espresso Bar No. 82 Vivace to doskonała kompozycja wyselekcjonowanych ziaren Arabiki (70%) i Robusty (30%), stworzona z myślą o prawdziwych miłośnikach włoskiego espresso. Kawa charakteryzuje się wyważonym, wyrazistym smakiem z delikatną nutą czekolady i korzennym aromatem. Tradycyjny proces powolnego palenia ziaren w kontrolowanej temperaturze pozwala wydobyć pełnię aromatu i głęboki smak. Zapewnia doskonałą, grubą i trwałą piankę (crema). Idealnie nadaje się do przygotowania klasycznego espresso, a także kaw mlecznych, takich jak cappuccino czy latte macchiato. Przeznaczona do ekspresów automatycznych, kolbowych i kawiarek.
+
+
+Opinie klientów o produkcie (wykorzystaj je bezpośrednio do wyeksponowania zalet i odparcia obiekcji/obaw w nowym opisie):
+- Ocena: 5/5 | Opinia: Fantastyczny, głęboki smak bez cienia kwasowości. Znakomite espresso, gruba pianka crema utrzymuje się bardzo długo. Piję codziennie rano z ekspresu automatycznego.
+- Ocena: 5/5 | Opinia: Bardzo dobra kawa, mocna, ale wyważona. Super komponuje się z mlekiem w cappuccino. Ziarna są równe i dobrze wypalone.
+- Ocena: 4/5 | Opinia: Dobra włoska kawa, lekko czekoladowy posmak. Dla mnie trochę za mało intensywna jak na Robustę w składzie, ale za to bardzo gładka w smaku.
+- Ocena: 3/5 | Opinia: Kawa smaczna, ale opakowanie dotarło lekko nieszczelne. Aromat uciekł, przez co pierwsze parzenie było średnie. Po otwarciu nowej paczki smak w porządku.
+
+WYMAGANIA DOTYCZĄCE OPISU MARKETINGOWEGO (W JĘZYKU POLSKIM):
+1. Struktura i formatowanie (Struktura opisu MUSI być bogata i czytelna):
+   - Chwytliwy nagłówek główny H2, który natychmiast przyciąga uwagę i komunikuje unikalną propozycję wartości (USP) produktu.
+   - 1-2 angażujące akapity wstępne wprowadzające w świat produktu przy użyciu języka korzyści (cecha -> zaleta -> korzyść).
+   - Sekcja z nagłówkiem H3 (np. "Dlaczego warto wybrać nasz produkt?") zawierająca przejrzystą lista wypunktowaną (minimum 4 punkty). Każdy punkt musi rozpoczynać się od pogrubionego hasła (np. **Bezpieczeństwo i trwałość** – opis...).
+   - Sekcja lub akapit rozwiewający wątpliwości (odprawa obiekcji): Wykorzystaj negatywne lub neutralne uwagi z opinii klientów (np. obawy o trwałość, smak, głośność czy trudność w obsłudze) i sprytnie je odeprzyj, zapewniając klienta o wysokiej jakości, prostocie użytkowania lub konkretnych ulepszeniach.
+   - Silne i motywujące Wezwanie do Działania (CTA) na samym końcu, zachęcające do zakupu (np. "Wybierz jakość, na którą zasługujesz, i zamów już dziś!").
+
+2. Ton i Styl:
+   - Ton wypowiedzi: Użyj stylu 'Perswazyjny (Sprzedażowy)'. Charakterystyka tego stylu: Skupia się na wywoływaniu emocji zakupowych, podkreślaniu korzyści (język korzyści) i silnym wezwaniu do działania (CTA).
+
+3. Optymalizacja SEO:
+   BEZWZGLĘDNY NAKAZ SEO (MAKSYMALNY PRIORYTET):
+   - MUSISZ wpleść w nowo wygenerowany opis następujące frazy kluczowe: kawa ziarnista, pellini espresso bar, kawa do ekspresu, włoska kawa, kawa ziarnista 1kg.
+   - Każda z tych fraz kluczowych/słów kluczowych musi pojawić się w tekście CO NAJMNIEJ RAZ.
+   - Rozmieść te frazy kluczowe naturalnie i płynnie w nagłówkach H2/H3, akapitach oraz na liście wypunktowanej.
+   - Możesz (i powinieneś) odmieniać te słowa gramatycznie przez przypadki, liczby itp., aby brzmiały w 100% naturalnie i poprawnie w języku polskim.
+   - Na samym końcu opisu (ale wewnątrz znaczników [OPIS] i [/OPIS]), po wezwaniu do działania (CTA), dodaj linię: "SEO: [tutaj wypisz wszystkie użyte w tekście słowa kluczowe]".
+
+4. Integracja opinii klientów:
+   - Przestudiuj podane opinie. Zaimplementuj najczęściej wymieniane zalety jako kluczowe punkty sprzedaży.
+   - Zidentyfikuj obiekcje z recenzji i sformułuj opis tak, aby przekształcić te wątpliwości w atuty lub zapewnienia o niezawodności produktu.
+
+5. Długość:
+   - Stwórz wyczerpujący i profesjonalny opis (zalecana długość: około 15-25 zdań). Unikaj lakonicznych, 3-zdaniowych opisów. Opis musi być atrakcyjny wizualnie i merytorycznie.
+
+WYMAGANIA DOTYCZĄCE ANALIZY WIZUALNEJ I PROPOZYCJI OBRAZÓW (W JĘZYKU ANGIELSKIM):
+1. Szczegółowy opis oryginalnego głównego obrazu produktu (na podstawie załączonego zdjęcia lub opisu/tytułu).
+2. Przygotuj 3 kreatywne, zachwycające i unikalne pomysły na nowe zdjęcia marketingowe (prompty dla modelu FLUX).
+   - **Zasada wierności produktowi**: Każdy z 3 promptów musi bezwzględnie koncentrować się na zachowaniu i pokazaniu ORYGINALNEGO produktu z oryginalnego zdjęcia (np. jeśli produktem jest całe opakowanie kawy, butelka, pudełko lub zegarek, prompt musi opisywać to konkretne opakowanie/pudełko/butelkę jako centralny element). Niedozwolone jest zastępowanie produktu jego składnikami (np. nie generuj samych luźnych ziaren kawy ani filiżanki napoju zamiast paczki kawy).
+   - **Kadrowanie i atrakcyjne tło**: Skup się wyłącznie na zmianie tła i kadru na bardziej przyciągające uwagę i estetyczne, pozostawiając sam produkt jako nienaruszony główny motyw w centrum.
+   - **Struktura opisu kadru**: Opisz kompozycję z produktem w centrum, określając profesjonalne otoczenie reklamowe, np. "The original product package/bottle centered on a premium textured stone podium, surrounded by soft organic leaf shadows, luxury product photography, soft warm studio lighting, 8k..." lub "The product package centered on a clean minimalist wooden table, soft natural daylight, commercial product shot...".
+   - Zaproponuj 3 zróżnicowane koncepcje tła (np. luksusowa aranżacja studyjna, minimalistyczna ekspozycja, ujęcie typu lifestyle).
+
+FORMAT REZULTATU (Zastosuj dokładnie te znaczniki/tagi, nie pisz żadnych dodatkowych wstępów ani komentarzy przed lub po tagach):
+
+[OPIS]
+(Tutaj umieść zoptymalizowany opis produktu w języku polskim, z nagłówkami HTML/markdown, akapitami, punktami i CTA)
+[/OPIS]
+
+[OPIS_OBRAZU]
+(Tutaj umieść szczegółowy opis oryginalnego obrazu głównego w języku angielskim)
+[/OPIS_OBRAZU]
+
+[PROMPT_1]
+(Tutaj umieść pierwszą propozycję nowego obrazu głównego w języku angielskim)
+[/PROMPT_1]
+
+[PROMPT_2]
+(Tutaj umieść drugą propozycję nowego obrazu głównego w języku angielskim)
+[/PROMPT_2]
+
+[PROMPT_3]
+(Tutaj umieść trzecią propozycję nowego obrazu głównego w języku angielskim)
+[/PROMPT_3]

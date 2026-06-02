@@ -461,6 +461,9 @@ def extract_product_data(html: str, base_url: str) -> dict[str, Any]:
 
 def fetch_image_base64(image_url: str, timeout_sec: float = 20.0) -> str:
     import base64
+    import io
+    from PIL import Image
+    
     headers = {"User-Agent": random.choice(USER_AGENTS)}
     try:
         with httpx.Client(headers=headers, follow_redirects=True, timeout=timeout_sec) as client:
@@ -473,8 +476,23 @@ def fetch_image_base64(image_url: str, timeout_sec: float = 20.0) -> str:
     if not content_type.startswith("image/"):
         raise ScraperError("URL grafiki nie zwrócił poprawnego pliku obrazu.")
 
-    data = response.content
-    if len(data) > 8 * 1024 * 1024:
-        raise ScraperError("Grafika jest zbyt duża do analizy (limit 8 MB).")
-
-    return base64.b64encode(data).decode("utf-8")
+    try:
+        # Load image bytes into PIL to perform resizing and compression
+        img = Image.open(io.BytesIO(response.content))
+        
+        # Convert to RGB mode (important for JPEG format compatibility)
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+            
+        # Downscale to max 512px to dramatically speed up Ollama vision processing
+        max_size = 512
+        img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+        
+        # Save to buffer as JPEG with 85% quality
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", quality=85)
+        compressed_data = buffer.getvalue()
+        
+        return base64.b64encode(compressed_data).decode("utf-8")
+    except Exception as e:
+        raise ScraperError(f"Błąd przetwarzania/kompresji obrazu: {e}")

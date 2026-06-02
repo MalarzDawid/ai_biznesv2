@@ -30,7 +30,7 @@ def init_session_state() -> None:
     if "reviews" not in st.session_state:
         st.session_state.reviews = []
     if "selected_model" not in st.session_state:
-        st.session_state.selected_model = "gemma4:31b"
+        st.session_state.selected_model = "gemma3:12b"
     if "image_urls" not in st.session_state:
         st.session_state.image_urls = []
     if "generated_image" not in st.session_state:
@@ -105,6 +105,112 @@ def parse_ollama_output(output: str) -> tuple[str, str, list[str]]:
     return opis, img_desc, prompts[:3]
 
 
+def is_vision_model(model_name: str) -> bool:
+    """Checks if the model name suggests vision/multimodal capabilities."""
+    model_lower = model_name.lower()
+    vision_keywords = [
+        "vision", "llava", "bakllava", "moondream", "minicpm", "vl", "multimodal",
+        "llama3.2", "clip", "siglip", "cogvlm", "qwen-vl", "qwen2-vl", "phi3-vision", "gemma3"
+    ]
+    return any(k in model_lower for k in vision_keywords)
+
+
+def detect_context_and_tone(title: str, description: str) -> tuple[str, str]:
+    """
+    Uses the LLM to analyze the product title and description.
+    Returns a tuple of (recommended_tone, suggested_seo_keywords).
+    """
+    import re
+    
+    # Heuristic rules as a local fallback
+    title_lower = title.lower()
+    desc_lower = description.lower()
+    
+    # Check for "Luźny (Młodzieżowy)" keywords
+    loose_keywords = [
+        "napój", "napoj", "sok", "drink", "cola", "przekąsk", "chips", "t-shirt", "koszulk", "zabawk",
+        "gra ", "słodycz", "czekolad", "juice", "beverage", "snack", "sweets", "toy", "tshirt", "gadżet"
+    ]
+    # Check for "Profesjonalny (Ekspercki)" keywords
+    pro_keywords = [
+        "zegarek", "watch", "premium", "luksus", "gold", "diament", "skóra", "skorz", "biznes", "laptop",
+        "smartfon", "iphone", "perfum", "rolex", "creed", "garnitur", "elegan", "biżuter", "bijuter",
+        "skincare", "krem", "serum", "luxury", "executive"
+    ]
+    # Check for "Techniczny (Specyfikacyjny)" keywords
+    tech_keywords = [
+        "wiertarka", "drill", "graficzn", "gpu", "cpu", "amd", "nvidia", "intel", "narzędz", "narzedz",
+        "śrubokręt", "procesor", "dysk", "ssd", "ram", "router", "silnik", "częśc", "czesc", "adapter",
+        "kabel", "cable", "specyfikacj", "industrial", "professional tool", "szlifierka"
+    ]
+    
+    heuristic_tone = None
+    if any(k in title_lower or k in desc_lower for k in loose_keywords):
+        heuristic_tone = "Luźny (Młodzieżowy)"
+    elif any(k in title_lower or k in desc_lower for k in pro_keywords):
+        heuristic_tone = "Profesjonalny (Ekspercki)"
+    elif any(k in title_lower or k in desc_lower for k in tech_keywords):
+        heuristic_tone = "Techniczny (Specyfikacyjny)"
+
+    # Simple local rule-based keyword generator for safety fallback
+    fallback_keywords = []
+    # Extract noun-like words from title to use as fallback keywords (Polish/English)
+    words = re.findall(r'\b[a-zA-Z0-9ąęółśźżćńĄĘÓŁŚŹŻĆŃ]{4,}\b', title)
+    if words:
+        fallback_keywords = [w.lower() for w in words[:5]]
+    fallback_keywords_str = ", ".join(fallback_keywords)
+
+    prompt = f"""Classify this product's best copywriting tone and suggest 5 Polish SEO keywords.
+
+Title: {title}
+Description: {description[:500]}
+
+Tone options (return the EXACT Polish name):
+- "Perswazyjny (Sprzedażowy)" — general consumer goods, toys, home accessories
+- "Profesjonalny (Ekspercki)" — premium/luxury/B2B, expensive watches, cosmetics, electronics
+- "Techniczny (Specyfikacyjny)" — tools, auto parts, construction, PC components
+- "Luźny (Młodzieżowy)" — drinks, snacks, lifestyle clothing, trendy gadgets
+
+Return JSON only:
+{{"styl": "exact_tone_name_from_list", "keywords": "word1, word2, word3, word4, word5"}}"""
+    try:
+        response = llm.chat(
+            provider="ollama",
+            model="gemma3:4b",
+            messages=[{"role": "user", "content": prompt}],
+            ollama_url=OLLAMA_URL,
+            as_json=True,
+            timeout_sec=20.0,
+            think=False,
+        )
+        parsed = llm.parse_json_payload(response)
+        
+        detected_style = parsed.get("styl", "").strip()
+        valid_tones = [
+            "Perswazyjny (Sprzedażowy)",
+            "Profesjonalny (Ekspercki)",
+            "Techniczny (Specyfikacyjny)",
+            "Luźny (Młodzieżowy)"
+        ]
+        
+        final_style = None
+        for vt in valid_tones:
+            if vt.lower() in detected_style.lower() or detected_style.lower() in vt.lower():
+                final_style = vt
+                break
+        
+        if not final_style:
+            final_style = heuristic_tone if heuristic_tone else "Perswazyjny (Sprzedażowy)"
+            
+        keywords = parsed.get("keywords", "").strip()
+        if not keywords:
+            keywords = fallback_keywords_str
+            
+        return final_style, keywords
+    except Exception:
+        final_style = heuristic_tone if heuristic_tone else "Perswazyjny (Sprzedażowy)"
+        return final_style, fallback_keywords_str
+
 
 def main() -> None:
     st.set_page_config(
@@ -124,7 +230,7 @@ def main() -> None:
         footer {visibility: hidden !important; height: 0px !important;}
         #MainMenu {visibility: hidden !important;}
 
-        /* CSS Variables for Auto Light/Dark Themes */
+        /* CSS Variables for Premium Google Light Theme Only */
         :root {
             --google-blue: #1a73e8;
             --google-blue-hover: #1557b0;
@@ -139,20 +245,23 @@ def main() -> None:
             --subtle-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --google-blue: #8ab4f8;
-                --google-blue-hover: #aecbfa;
-                --google-blue-light: rgba(138, 180, 248, 0.15);
-                --bg-page: #121212;
-                --bg-card: #1e1e1e;
-                --border-color: #3c4043;
-                --text-primary: #e8eaed;
-                --text-secondary: #9aa0a6;
-                --input-bg: #202124;
-                --card-shadow: 0 1px 3px 0 rgba(0,0,0,0.5), 0 4px 8px 3px rgba(0,0,0,0.3);
-                --subtle-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            }
+        /* Enforce Light Background & Primary Text Color Everywhere */
+        .stApp, .stAppHeader, .stAppViewContainer, [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stAppViewBlockContainer"] {
+            background-color: var(--bg-page) !important;
+            color: var(--text-primary) !important;
+        }
+
+        h1, h2, h3, h4, h5, h6, p, span, li, label, div[data-testid="stMarkdownContainer"] p, [data-testid="stWidgetLabel"] p {
+            color: var(--text-primary) !important;
+        }
+
+        /* Sidebar Styling Override */
+        [data-testid="stSidebar"], section[data-testid="stSidebar"], [data-testid="stSidebar"] [class*="css"] {
+            background-color: #ffffff !important;
+            border-right: 1px solid var(--border-color) !important;
+        }
+        [data-testid="stSidebar"] * {
+            color: var(--text-primary) !important;
         }
 
         /* Base Body and Layout adjustments */
@@ -196,18 +305,17 @@ def main() -> None:
         .product-name {
             font-weight: 700;
             font-size: 1.25rem;
-            color: var(--text-primary);
+            color: var(--text-primary) !important;
             letter-spacing: -0.4px;
         }
         .google-nav-badge {
             background-color: var(--google-blue-light);
-            color: var(--google-blue);
+            color: var(--google-blue) !important;
             padding: 6px 16px;
             border-radius: 30px;
             font-size: 0.85rem;
             font-weight: 600;
             letter-spacing: 0.3px;
-            border: 1px solid rgba(26, 115, 232, 0.15);
         }
 
         /* Inputs & Elements Styling */
@@ -231,6 +339,14 @@ def main() -> None:
             box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15) !important;
         }
 
+        /* Disabled and Read-Only text boxes */
+        textarea:disabled, input:disabled {
+            background-color: #f1f3f4 !important;
+            color: var(--text-secondary) !important;
+            cursor: not-allowed;
+            border-color: var(--border-color) !important;
+        }
+
         /* Form Expander overrides */
         div[data-testid="stExpander"] {
             background-color: var(--bg-card) !important;
@@ -244,11 +360,42 @@ def main() -> None:
         div[data-testid="stExpander"]:hover {
             box-shadow: 0 8px 24px rgba(0,0,0,0.06) !important;
         }
-        div[data-testid="stExpander"] summary {
-            font-weight: 600 !important;
+        div[data-testid="stExpander"] summary, div[data-testid="stExpander"] details, div[data-testid="stExpander"] div[data-testid="stExpanderDetails"] {
+            background-color: var(--bg-card) !important;
             color: var(--text-primary) !important;
+            font-weight: 600 !important;
+        }
+        div[data-testid="stExpander"] summary {
             padding: 16px 20px !important;
             font-size: 1.05rem !important;
+        }
+
+        /* Dropdown Select Menus Styling */
+        div[data-baseweb="select"] ul, div[data-baseweb="menu"] {
+            background-color: #ffffff !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 8px !important;
+        }
+        div[data-baseweb="select"] li, div[data-baseweb="menu"] li {
+            background-color: #ffffff !important;
+            color: var(--text-primary) !important;
+            transition: background-color 0.2s ease !important;
+        }
+        div[data-baseweb="select"] li:hover, div[data-baseweb="menu"] li:hover {
+            background-color: var(--google-blue-light) !important;
+            color: var(--google-blue) !important;
+        }
+
+        /* Status and Alert Widget styling overrides */
+        div[data-testid="stAlert"], div[data-testid="stStatusWidget"], [data-testid="stStatusWidget"] div {
+            background-color: #ffffff !important;
+            border: 1px solid var(--border-color) !important;
+            color: var(--text-primary) !important;
+            border-radius: 12px !important;
+        }
+        div[data-testid="stAlert"] *, div[data-testid="stStatusWidget"] * {
+            color: var(--text-primary) !important;
         }
 
         /* Widget labels styling */
@@ -262,7 +409,7 @@ def main() -> None:
         /* Premium Buttons Styling */
         div.stButton > button {
             background: var(--google-blue) !important;
-            color: var(--bg-card) !important;
+            color: #ffffff !important;
             border: 1px solid transparent !important;
             border-radius: 28px !important;
             padding: 12px 28px !important;
@@ -278,6 +425,7 @@ def main() -> None:
             background: var(--google-blue-hover) !important;
             box-shadow: var(--card-shadow) !important;
             transform: translateY(-1px) !important;
+            color: #ffffff !important;
         }
 
         div.stButton > button:active {
@@ -289,6 +437,7 @@ def main() -> None:
             border-bottom: 1px solid var(--border-color) !important;
             margin-bottom: 24px !important;
             gap: 8px !important;
+            background-color: transparent !important;
         }
         button[role="tab"] {
             font-weight: 600 !important;
@@ -307,6 +456,7 @@ def main() -> None:
         button[role="tab"][aria-selected="true"] {
             color: var(--google-blue) !important;
             border-bottom: 3px solid var(--google-blue) !important;
+            background-color: transparent !important;
         }
 
         /* Download buttons and secondary button details */
@@ -324,6 +474,7 @@ def main() -> None:
         .stDownloadButton > button:hover {
             background-color: var(--google-blue-light) !important;
             border-color: var(--google-blue) !important;
+            color: var(--google-blue-hover) !important;
         }
         </style>
         """,
@@ -361,17 +512,17 @@ def main() -> None:
     with col_input2:
         model_names = {
             "gemma3:4b": "Szybki (gemma3:4b) - ok. 15-30 sek",
-            "gpt-oss:20b": "Zbalansowany (gpt-oss:20b) - ok. 1-2 min",
-            "gemma4:31b": "Precyzyjny (gemma4:31b) - ok. 3-5 min"
+            "gemma3:12b": "Zbalansowany (gemma3:12b) - ok. 30-60 sek",
+            "gemma4:31b": "Precyzyjny (gemma4:31b) - ok. 2-3 min"
         }
         st.selectbox(
             "Model językowy (Ollama)",
-            options=["gemma3:4b", "gpt-oss:20b", "gemma4:31b"],
+            options=["gemma3:4b", "gemma3:12b", "gemma4:31b"],
             key="selected_model",
             format_func=lambda x: model_names.get(x, x),
             help="• Szybki: model 4B (bardzo szybki czas generowania, uproszczona jakość)\n\n"
-                 "• Zbalansowany: model 20B (optymalna równowaga między czasem a jakością)\n\n"
-                 "• Precyzyjny: model 31B (najwyższa jakość, bogate słownictwo sprzedażowe, ale najdłuższy czas oczekiwania)"
+                 "• Zbalansowany: model 12B z obsługą obrazów (dobra jakość, ~30-60 sek)\n\n"
+                 "• Precyzyjny: model 31B z obsługą obrazów (najwyższa jakość, ale najdłuższy czas oczekiwania)"
         )
 
     # Słownik stylów copywritingu dla modelu językowego
@@ -386,20 +537,28 @@ def main() -> None:
     with st.expander("✍️ Personalizacja stylu copywritingu i słowa kluczowe (SEO)", expanded=True):
         col_pers1, col_pers2 = st.columns(2)
         with col_pers1:
-            st.selectbox(
+            tone_keys = list(tone_options.keys())
+            try:
+                tone_index = tone_keys.index(st.session_state.selected_tone)
+            except ValueError:
+                tone_index = 0
+                
+            selected_tone_val = st.selectbox(
                 "Styl i ton wypowiedzi (Tone of Voice)",
-                options=list(tone_options.keys()),
-                key="selected_tone",
+                options=tone_keys,
+                index=tone_index,
                 help="Wybierz styl, w jakim sztuczna inteligencja ma napisać nowy opis produktu."
             )
+            st.session_state.selected_tone = selected_tone_val
             st.caption(f"ℹ️ **O wybranym stylu:** {tone_options[st.session_state.selected_tone]}")
         with col_pers2:
-            st.text_input(
+            seo_keywords_val = st.text_input(
                 "Słowa kluczowe pod SEO (rozdziel przecinkami)",
-                key="seo_keywords",
+                value=st.session_state.seo_keywords,
                 placeholder="np. słuchawki bezprzewodowe, redukcja szumów ANC, bluetooth 5.3",
                 help="Wpisz frazy kluczowe, które sztuczna inteligencja ma naturalnie wpleść w treść opisu w celu poprawienia widoczności w wyszukiwarkach."
             )
+            st.session_state.seo_keywords = seo_keywords_val
 
     # Usunięto zaawansowane ustawienia FLUX dla wygody użytkownika biznesowego.
     # W tle używane są domyślne parametry (Siła promptu = 4.0, Kroki = 30).
@@ -462,6 +621,19 @@ def main() -> None:
                 
                 status.write(f"✓ Pomyślnie pobrano: **{title}**")
                 
+                # Detect style and SEO keywords automatically based on product context
+                status.write("Analizowanie kontekstu produktu i dobieranie stylu copywritingu...")
+                detected_tone, suggested_keywords = detect_context_and_tone(title, desc)
+                st.session_state.selected_tone = detected_tone
+                
+                status.write(f"✓ Automatycznie dopasowano styl: **{detected_tone}**")
+                if suggested_keywords:
+                    status.write(f"✓ Wygenerowano sugerowane słowa kluczowe SEO: *{suggested_keywords}*")
+                
+                # Only populate SEO keywords if currently empty
+                if not st.session_state.seo_keywords.strip():
+                    st.session_state.seo_keywords = suggested_keywords
+
             except Exception as e:
                 status.update(label="❌ Błąd pobierania danych", state="error")
                 st.error(f"Nie udało się pobrać opisu ze strony: {e}")
@@ -476,64 +648,89 @@ def main() -> None:
             status.write(f"Generowanie zoptymalizowanego opisu za pomocą {st.session_state.selected_model}...")
             status.update(label="🤖 Trwa optymalizacja opisu przez model AI...", state="running")
             
-            num_orig_sentences = count_sentences(st.session_state.original_description)
-            max_new_sentences = num_orig_sentences + 2
-
-            # Format reviews for the LLM prompt context
+            # Format reviews: positive (4-5★) first for social proof, then negative (1-3★) for objection handling
             formatted_reviews = ""
             if st.session_state.reviews:
-                formatted_reviews = "\nOpinie klientów o produkcie:\n" + "\n".join([f"- {r.get('text')}" for r in st.session_state.reviews[:8]])
+                all_reviews = st.session_state.reviews[:10]
+                positive = [r for r in all_reviews if (int(r.get('rating')) or 0) >= 4]
+                negative = [r for r in all_reviews if (int(r.get('rating')) or 0) < 4]
+                review_lines = []
+                if positive:
+                    review_lines.append("POSITIVE REVIEWS (4-5★) — extract emotional triggers, specific benefits, exact phrases customers love:")
+                    review_lines.extend([f"  [{r.get('rating')}★] {r.get('text')}" for r in positive[:6]])
+                if negative:
+                    review_lines.append("CRITICAL REVIEWS (1-3★) — identify objections to counter with confidence:")
+                    review_lines.extend([f"  [{r.get('rating')}★] {r.get('text')}" for r in negative[:4]])
+                formatted_reviews = "\nCUSTOMER VOICE DATA:\n" + "\n".join(review_lines)
 
-            # Custom copywriting tone and SEO instructions
-            tone_instr = f"- Ton wypowiedzi: Użyj stylu '{st.session_state.selected_tone}'. Charakterystyka tego stylu: {tone_options.get(st.session_state.selected_tone, '')}"
-            seo_instr = ""
+            tone_en = {
+                "Perswazyjny (Sprzedażowy)": "Persuasive/Sales — lead with a pain point or desire, use vivid benefit language (feature→advantage→felt benefit), mirror the emotional vocabulary from positive reviews, close with an urgent CTA.",
+                "Profesjonalny (Ekspercki)": "Professional/Expert — authoritative and precise, establish credibility early, use industry terminology, frame quality claims with specifics, end with a confident recommendation.",
+                "Techniczny (Specyfikacyjny)": "Technical/Specification — fact-first, highlight exact specs and construction details, use numbered lists for key parameters, write for buyers who research before deciding.",
+                "Luźny (Młodzieżowy)": "Casual/Youth — second-person 'Ty', conversational energy, use relatable scenarios from lifestyle reviews, end with a fun and direct CTA.",
+            }
+            tone_instr = f"{tone_en.get(st.session_state.selected_tone, '')}"
+            seo_instr = "No specific SEO keywords provided — write naturally for the reader, not for robots."
             if st.session_state.seo_keywords.strip():
-                seo_instr = f"- Słowa kluczowe SEO: Wpleć w treść w naturalny i płynny sposób następujące frazy kluczowe (zadbaj o poprawne gramatycznie wbudowanie ich w polski tekst): {st.session_state.seo_keywords.strip()}."
+                seo_instr = f"Integrate these SEO keywords naturally into the Polish description (inflect grammatically, never force): {st.session_state.seo_keywords.strip()}. Each keyword must appear at least once. Weave them into benefit statements and headlines — they should feel organic, not stuffed."
 
-            prompt_content = f"""Jesteś doświadczonym ekspertem e-commerce i copywriterem. Twoim zadaniem jest:
-1. Zoptymalizowanie opisu produktu pod kątem zwiększenia sprzedaży (conversion rate) w języku polskim.
-2. Stworzenie szczegółowego opisu głównego zdjęcia produktu po angielsku (na podstawie załączonego obrazu lub informacji o produkcie).
-3. Zaproponowanie 3 różnych, kreatywnych i ciekawych nowych promptów (propozycji) po angielsku do wygenerowania nowego obrazu głównego za pomocą modelu FLUX.2. Te propozycje powinny być ciekawsze niż oryginalny obraz (np. pokazujące produkt w luksusowym studiu, w użyciu/lifestyle, w dynamicznej aranżacji).
+            prompt_content = f"""You are a world-class Polish e-commerce copywriter with 15 years of experience writing descriptions that genuinely sell. Your descriptions are known for being emotionally compelling, specific, and authentic — never generic or robotic.
 
-Tytuł produktu: {title}
+PRODUCT DATA:
+Title: {title}
 
-Oryginalny opis:
+Original description:
 {st.session_state.original_description}
+
 {formatted_reviews}
 
-WYMAGANIA DOTYCZĄCE OPISU MARKETINGOWEGO (W JĘZYKU POLSKIM):
-- Używaj języka korzyści (cecha -> zaleta -> korzyść).
-- Zachowaj 100% zgodności z faktami i specyfikacją.
-- Wykorzystaj opinie klientów (podkreśl zalety, odeprzyj obiekcje).
-- Dodaj przejrzyste nagłówki, akapity i listę wypunktowaną oraz CTA na końcu.
-{tone_instr}
-{seo_instr}
-- Zwięzłość: Oryginalny opis składa się z {num_orig_sentences} zdań. Nowy opis MUSI liczyć maksymalnie {max_new_sentences} zdań (nie może być dłuższy niż oryginalny o więcej niż 2 zdania).
+═══════════════════════════════════════
+TASK 1 — WRITE A COMPELLING POLISH MARKETING DESCRIPTION
+═══════════════════════════════════════
 
-WYMAGANIA DOTYCZĄCE PROPOZYCJI OBRAZÓW (W JĘZYKU ANGIELSKIM):
-- Powinny być sformułowane jako szczegółowe prompty dla modelu generowania obrazów FLUX (np. "lifestyle product photography of..., clean studio background, soft lighting, 8k...").
-- Każdy z 3 promptów powinien proponować inną, ciekawą, estetyczną kompozycję i otoczenie produktu, aby obraz był bardziej atrakcyjny i dynamiczny niż standardowe, nudne tło.
+Tone & style: {tone_instr}
 
-FORMAT REZULTATU (Zastosuj dokładnie te znaczniki/tagi, nie pisz żadnych dodatkowych wstępów ani komentarzy):
+SEO: {seo_instr}
+
+MANDATORY RULES — follow every one:
+1. Open with an emotionally resonant hook (a scenario, a problem solved, or a desire fulfilled) — NOT with the product name
+2. Use specific details from the reviews — borrow real phrases, real benefits, real emotions customers expressed
+3. Convert every feature into a felt benefit: don't say "made of stainless steel", say what that means for the buyer
+4. Include a section "Dlaczego klienci to kochają?" with 4-6 bullets — each based on actual review insights, starting with **bold benefit** — vivid elaboration
+5. Add one short paragraph that disarms the most common objection found in critical reviews
+6. End with a CTA that matches the product's aspirational context
+7. FORBIDDEN: generic phrases like "wysokiej jakości", "doskonały produkt", "świetny wybór", "nie czekaj", "kup teraz i przekonaj się". Replace them with specific, earned claims.
+8. Length: 15-20 sentences total. Rich but scannable.
+
+═══════════════════════════════════════
+TASK 2 — IMAGE ANALYSIS & FLUX PROMPTS (IN ENGLISH)
+═══════════════════════════════════════
+- Describe the original product image in precise visual detail
+- Write 3 diverse FLUX img2img prompts. Rules:
+  * Keep the EXACT original product (package/bottle/box/watch) as the central element — never substitute with ingredients or components
+  * Only change background and framing
+  * Concepts: 1) luxury studio  2) minimalist  3) lifestyle
+
+OUTPUT FORMAT — use exactly these tags, no text outside them:
 
 [OPIS]
-(Tutaj umieść zoptymalizowany opis produktu w języku polskim)
+(Polish product description — hooks, paragraphs, bullets, CTA)
 [/OPIS]
 
 [OPIS_OBRAZU]
-(Tutaj umieść szczegółowy opis oryginalnego obrazu głównego w języku angielskim)
+(English description of original main image)
 [/OPIS_OBRAZU]
 
 [PROMPT_1]
-(Tutaj umieść pierwszą propozycję nowego obrazu głównego w języku angielskim)
+(English FLUX prompt — luxury studio concept)
 [/PROMPT_1]
 
 [PROMPT_2]
-(Tutaj umieść drugą propozycję nowego obrazu głównego w języku angielskim)
+(English FLUX prompt — minimalist concept)
 [/PROMPT_2]
 
 [PROMPT_3]
-(Tutaj umieść trzecią propozycję nowego obrazu głównego w języku angielskim)
+(English FLUX prompt — lifestyle concept)
 [/PROMPT_3]"""
 
             messages = [
@@ -545,41 +742,58 @@ FORMAT REZULTATU (Zastosuj dokładnie te znaczniki/tagi, nie pisz żadnych dodat
             accumulated_text = ""
             
             try:
-                # Try passing the image if it exists to support multimodal vision models in Ollama
-                if st.session_state.image_urls:
+                # Try passing the image only if it exists AND the selected model supports vision
+                if st.session_state.image_urls and is_vision_model(st.session_state.selected_model):
                     try:
-                        status.write("Pobieranie zdjęcia głównego do analizy wizualnej przez model AI...")
+                        status.write("Model obsługuje widzenie komputerowe. Pobieranie zdjęcia głównego do analizy...")
                         img_base64 = scraper.fetch_image_base64(st.session_state.image_urls[0])
                         messages[0]["images"] = [img_base64]
                     except Exception as img_exc:
                         status.write(f"⚠️ Nie udało się pobrać zdjęcia do analizy (pomijanie obrazu): {img_exc}")
+                else:
+                    status.write("Model tekstowy (brak wbudowanej analizy obrazów) - pomijanie przesyłania zdjęcia do Ollamy...")
 
                 status.write(f"Generowanie zoptymalizowanego opisu oraz propozycji grafik za pomocą {st.session_state.selected_model}...")
                 status.update(label="🤖 Trwa generowanie przez model AI...", state="running")
                 
+                import time
                 try:
+                    last_update = 0.0
                     for chunk in llm.stream_chat(
                         provider="ollama",
                         model=st.session_state.selected_model,
                         messages=messages,
-                        ollama_url=OLLAMA_URL
+                        ollama_url=OLLAMA_URL,
+                        think=False,
                     ):
                         accumulated_text += chunk
-                        stream_placeholder.text_area("Generowanie na żywo...", value=accumulated_text, height=300, disabled=True)
+                        now = time.time()
+                        # Throttle Streamlit rendering updates to every 0.1s to avoid high UI rendering CPU/network load
+                        if now - last_update > 0.1:
+                            stream_placeholder.code(accumulated_text, language="markdown")
+                            last_update = now
+                    stream_placeholder.code(accumulated_text, language="markdown")
+                    
                 except Exception as ollama_exc:
                     # If we passed an image and it failed, let's retry WITHOUT the image!
                     if "images" in messages[0]:
-                        status.write("⚠️ Model prawdopodobnie nie obsługuje obrazów. Ponawianie próby w trybie tekstowym...")
+                        status.write("⚠️ Model zgłosił błąd przy przetwarzaniu obrazu. Ponawianie próby w trybie czysto tekstowym...")
                         del messages[0]["images"]
                         accumulated_text = ""
+                        last_update = 0.0
                         for chunk in llm.stream_chat(
                             provider="ollama",
                             model=st.session_state.selected_model,
                             messages=messages,
-                            ollama_url=OLLAMA_URL
+                            ollama_url=OLLAMA_URL,
+                            think=False,
                         ):
                             accumulated_text += chunk
-                            stream_placeholder.text_area("Generowanie na żywo (tylko tekst)...", value=accumulated_text, height=300, disabled=True)
+                            now = time.time()
+                            if now - last_update > 0.1:
+                                stream_placeholder.code(accumulated_text, language="markdown")
+                                last_update = now
+                        stream_placeholder.code(accumulated_text, language="markdown")
                     else:
                         raise ollama_exc
 
@@ -594,8 +808,6 @@ FORMAT REZULTATU (Zastosuj dokładnie te znaczniki/tagi, nie pisz żadnych dodat
                     st.session_state.custom_image_prompt = prompts[0]
                     st.session_state.selected_concept = 0
 
-                status.write("Zwalnianie pamięci GPU (wyładowywanie modelu Ollama)...")
-                llm.unload_model(st.session_state.selected_model, ollama_url=OLLAMA_URL)
                 status.update(label="✓ Ukończono optymalizację!", state="complete")
                 stream_placeholder.empty()
                 st.rerun()
@@ -632,14 +844,20 @@ FORMAT REZULTATU (Zastosuj dokładnie te znaczniki/tagi, nie pisz żadnych dodat
                             st.markdown("---")
             with col2:
                 st.subheader("🟢 Zoptymalizowany opis sprzedażowy")
-                st.text_area(
-                    "Nowa ulepszona treść",
-                    value=st.session_state.optimized_description,
-                    height=500,
-                    key="opt_desc_display",
-                    disabled=True
-                )
                 if st.session_state.optimized_description:
+                    subtab_preview, subtab_raw = st.tabs(["👁️ Podgląd wizualny", "📝 Kod źródłowy / Kopiowanie"])
+                    with subtab_preview:
+                        st.markdown(st.session_state.optimized_description)
+                    with subtab_raw:
+                        st.text_area(
+                            "Skopiuj stąd opis",
+                            value=st.session_state.optimized_description,
+                            height=400,
+                            key="opt_desc_display",
+                            disabled=True,
+                            label_visibility="collapsed"
+                        )
+                    
                     st.download_button(
                         label="💾 Pobierz zoptymalizowany opis (.txt)",
                         data=st.session_state.optimized_description,
@@ -647,6 +865,8 @@ FORMAT REZULTATU (Zastosuj dokładnie te znaczniki/tagi, nie pisz żadnych dodat
                         mime="text/plain",
                         key="dl_desc_btn"
                     )
+                else:
+                    st.info("Zoptymalizowany opis pojawi się po zakończeniu generowania.")
                     
         with tab_image:
             col_img, col_ctrl = st.columns([1, 1])
@@ -681,21 +901,22 @@ FORMAT REZULTATU (Zastosuj dokładnie te znaczniki/tagi, nie pisz żadnych dodat
                 if st.session_state.image_prompts:
                     st.markdown("### Wybierz kreatywną koncepcję dla FLUX:")
                     
-                    # Initialize session states for concept selection if not present
-                    if "selected_concept" not in st.session_state:
-                        st.session_state.selected_concept = 0
-                        st.session_state.custom_image_prompt = st.session_state.image_prompts[0]
-                        
-                    def update_prompt():
-                        st.session_state.custom_image_prompt = st.session_state.image_prompts[st.session_state.selected_concept]
-                        
-                    st.radio(
+                    # Safely map to radio selection index
+                    radio_index = st.session_state.selected_concept
+                    if radio_index not in [0, 1, 2]:
+                        radio_index = 0
+
+                    selected_idx = st.radio(
                         "Wybierz koncepcję:",
                         options=[0, 1, 2],
+                        index=radio_index,
                         format_func=lambda x: f"Koncepcja {x+1}: {st.session_state.image_prompts[x]}",
-                        key="selected_concept",
-                        on_change=update_prompt
+                        key="concept_radio"
                     )
+                    if selected_idx != st.session_state.selected_concept:
+                        st.session_state.selected_concept = selected_idx
+                        st.session_state.custom_image_prompt = st.session_state.image_prompts[selected_idx]
+                        st.rerun()
                 else:
                     st.info("Brak gotowych koncepcji z modelu AI. Wpisz własny prompt poniżej.")
                 

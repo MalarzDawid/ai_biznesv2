@@ -161,6 +161,7 @@ def stream_chat(
     ollama_url: str = "http://localhost:11434",
     as_json: bool = False,
     timeout_sec: float = 180.0,
+    think: bool | None = None,
 ) -> Generator[str, None, None]:
     """Streams chat completions from various providers (Ollama, Gemini, OpenAI, Anthropic)."""
     provider = provider.lower()
@@ -175,6 +176,8 @@ def stream_chat(
         }
         if as_json:
             payload["format"] = "json"
+        if think is not None:
+            payload["think"] = think
 
         try:
             with httpx.stream("POST", endpoint, json=payload, timeout=timeout_sec) as response:
@@ -341,6 +344,7 @@ def chat(
     ollama_url: str = "http://localhost:11434",
     as_json: bool = False,
     timeout_sec: float = 180.0,
+    think: bool | None = None,
 ) -> str:
     """Synchronous chat function that aggregates the stream."""
     chunks = []
@@ -351,7 +355,8 @@ def chat(
         api_key=api_key,
         ollama_url=ollama_url,
         as_json=as_json,
-        timeout_sec=timeout_sec
+        timeout_sec=timeout_sec,
+        think=think,
     ):
         chunks.append(chunk)
     return "".join(chunks)
